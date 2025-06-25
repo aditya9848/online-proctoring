@@ -1,31 +1,50 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Online Exam Proctor</title>
-    <style>
-        #alert {
-            font-size: 20px;
-            color: white;
-            background-color: red;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-    </style>
+  <title>Online Proctoring</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial;
+      background: #f9f9f9;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    #video {
+      border: 5px solid #2c3e50;
+      margin-top: 20px;
+      width: 640px;
+      height: auto;
+    }
+    #alert {
+      margin-top: 20px;
+      font-size: 24px;
+      color: red;
+    }
+  </style>
 </head>
 <body>
-    <div id="alert">All clear</div>
-    <img src="{{ url_for('video_feed') }}" width="720" />
+  <h1>🎓 Online Exam Proctoring System</h1>
+  <img id="video" src="{{ url_for('video_feed') }}" />
 
-    <script>
-        const alertBox = document.getElementById("alert");
-        const evtSource = new EventSource("/alerts");
+  <div id="alert">Status: All clear ✅</div>
 
-        evtSource.onmessage = function(event) {
-            const msg = event.data;
-            alertBox.innerText = msg;
-            alertBox.style.backgroundColor = msg === "All clear" ? "green" : "red";
-        };
-    </script>
+  <script>
+    const alertBox = document.getElementById('alert');
+
+    const source = new EventSource("/alerts");
+    source.onmessage = function(event) {
+      const msg = event.data;
+      if (msg === "All clear") {
+        alertBox.textContent = "Status: All clear ✅";
+        alertBox.style.color = "green";
+      } else {
+        alertBox.textContent = "⚠️ Alert: " + msg;
+        alertBox.style.color = "red";
+      }
+    };
+  </script>
 </body>
 </html>
