@@ -1,12 +1,25 @@
 import cv2
 import numpy as np
 import datetime
+import os
+import urllib.request
 
+# Auto-download LBF model if not present
+MODEL_PATH = "lbfmodel.yaml"
+MODEL_URL = "https://github.com/kurnianggoro/GSOC2017/raw/master/data/lbfmodel.yaml"
+
+if not os.path.exists(MODEL_PATH):
+    print("🔽 Downloading lbfmodel.yaml...")
+    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+    print("✅ Model downloaded.")
+
+# Load classifiers
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
 
+# Load facial landmark model
 facemark = cv2.face.createFacemarkLBF()
-facemark.loadModel("lbfmodel.yaml")  # Load from project folder
+facemark.loadModel(MODEL_PATH)
 
 def detect_cheating(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -80,8 +93,12 @@ def detect_cheating(frame):
     return frame, cheating_event
 
 def log_event(event, frame=None):
+    if not os.path.exists("screenshots"):
+        os.makedirs("screenshots")
+
     now = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
     with open("log.csv", "a") as f:
         f.write(f"{now},{event}\n")
+
     if frame is not None:
         cv2.imwrite(f"screenshots/{now}.jpg", frame)
