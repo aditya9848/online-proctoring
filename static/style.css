@@ -1,0 +1,31 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f2f4f7;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+}
+
+.question-block {
+    margin-bottom: 20px;
+}
+
+.alert-box {
+    margin-top: 20px;
+    padding: 10px;
+    background: #fff3cd;
+    border-left: 5px solid #ffc107;
+    font-weight: bold;
+}
+
+.video-box {
+    margin-top: 20px;
+}

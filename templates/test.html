@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test {{ test_id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin-bottom: 200px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+    }
+    .question-block {
+      margin-bottom: 20px;
+    }
+    .video-box {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      border: 2px solid #ddd;
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 999;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+  </style>
+
+  <script>
+    let total = 600; // 10 minutes
+    window.addEventListener("DOMContentLoaded", () => {
+      const timerEl = document.getElementById('timer');
+      const interval = setInterval(() => {
+        let min = Math.floor(total / 60),
+            sec = total % 60;
+        timerEl.innerText = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+        if (--total < 0) {
+          clearInterval(interval);
+          alert("Time's up! Submitting.");
+          document.getElementById("testForm").submit();
+        }
+      }, 1000);
+
+      // Block submission if cheating already terminated the test
+      document.getElementById("testForm").addEventListener("submit", function(e) {
+        const alertBox = document.getElementById("alert-box");
+        if (alertBox.innerText.includes("Terminated")) {
+          alert("You cannot submit the test due to cheating termination.");
+          e.preventDefault();
+        }
+      });
+    });
+
+    // Server-Sent Events for cheating alerts
+    const source = new EventSource("/alerts?test_id={{ test_id }}");
+    source.onmessage = function(event) {
+      const msg = event.data;
+      const alertBox = document.getElementById("alert-box");
+      alertBox.innerText = msg;
+      if (msg.includes("Terminated")) {
+        alert("Cheating detected multiple times. Test will now be submitted.");
+        window.location.href = `/result?test_id={{ test_id }}`;
+      }
+    };
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h2>Welcome {{ student_id }} - Test {{ test_id }}</h2>
+    <p>Time left: <span id="timer">10:00</span></p>
+
+    <form id="testForm" action="{{ url_for('result') }}" method="get">
+  <input type="hidden" name="test_id" value="{{ test_id }}">
+  {% for q in questions %}
+    <div class="question-block">
+      <p><strong>Q{{ loop.index }}:</strong> {{ q.question }}</p>
+      {% for opt in q.options %}
+        <label>
+          <input type="radio" name="q{{ loop.index }}" value="{{ opt }}" required>
+          {{ opt }}
+        </label><br>
+      {% endfor %}
+    </div>
+    <hr>
+  {% endfor %}
+  <button type="submit">Submit Test</button>
+</form>
+
+
+  </div>
+
+  <!-- Hidden cheating alert box -->
+  <div id="alert-box" style="display:none;"></div>
+
+  <!-- Fixed webcam stream -->
+  <div class="video-box">
+    <h4>Live Webcam</h4>
+    <img src="{{ url_for('video_feed') }}?test_id={{ test_id }}" width="300">
+  </div>
+</body>
+</html>

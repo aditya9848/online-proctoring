@@ -2,28 +2,15 @@ import cv2
 import numpy as np
 import datetime
 import os
-import urllib.request
 
-# Auto-download LBF model if not present
-MODEL_PATH = "lbfmodel.yaml"
-MODEL_URL = "https://github.com/kurnianggoro/GSOC2017/raw/master/data/lbfmodel.yaml"
-
-if not os.path.exists(MODEL_PATH):
-    print("🔽 Downloading lbfmodel.yaml...")
-    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-    print("✅ Model downloaded.")
-
-# Load classifiers
+# Load face detection and landmark models
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
-
-# Load facial landmark model
 facemark = cv2.face.createFacemarkLBF()
-facemark.loadModel(MODEL_PATH)
+facemark.loadModel("lbfmodel.yaml")  # Make sure this file is in your directory
 
 def detect_cheating(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5)
     cheating_event = None
 
     if len(faces) != 1:
@@ -31,15 +18,20 @@ def detect_cheating(frame):
         log_event(cheating_event, frame)
         return frame, cheating_event
 
-    for (x, y, w, h) in faces:
-        roi_gray = gray[y:y+h, x:x+w]
-        eyes = eye_cascade.detectMultiScale(roi_gray)
-        if len(eyes) < 1:
-            cheating_event = "Eyes Not Detected"
-            log_event(cheating_event, frame)
+    (x, y, w, h) = faces[0]
+    face_center_x = x + w / 2
+    face_center_y = y + h / 2
+    frame_center_x = frame.shape[1] / 2
+    frame_center_y = frame.shape[0] / 2
 
-        _, landmarks = facemark.fit(gray, np.array([[(x, y, x+w, y+h)]]))
+    # Case: Head too far from screen center (went away)
+    if abs(face_center_x - frame_center_x) > frame.shape[1] * 0.3 or abs(face_center_y - frame_center_y) > frame.shape[0] * 0.3:
+        cheating_event = "Moved Away From Screen"
+        log_event(cheating_event, frame)
+        return frame, cheating_event
 
+    try:
+        _, landmarks = facemark.fit(gray, np.array([[(x, y, x + w, y + h)]]))
         if landmarks:
             image_points = np.array([
                 landmarks[0][0][30],  # Nose tip
@@ -77,18 +69,21 @@ def detect_cheating(frame):
             proj_matrix = np.hstack((rmat, translation_vector))
             _, _, _, _, _, _, eulerAngles = cv2.decomposeProjectionMatrix(proj_matrix)
 
-            yaw = eulerAngles[1][0]   # side to side
-            pitch = eulerAngles[0][0] # up and down
+            yaw = eulerAngles[1][0]
+            pitch = eulerAngles[0][0]
 
             if abs(yaw) > 25:
-                cheating_event = f"Looking Away (Yaw: {yaw:.1f}°)"
+                cheating_event = f"Looking Sideways (Yaw: {yaw:.1f}°)"
                 log_event(cheating_event, frame)
             elif abs(pitch) > 20:
                 cheating_event = f"Looking Up/Down (Pitch: {pitch:.1f}°)"
                 log_event(cheating_event, frame)
 
-        # Optional: draw face box
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+    except Exception as e:
+        print("Facial landmark detection error:", e)
+
+    # Optional: draw bounding box
+    cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
     return frame, cheating_event
 
